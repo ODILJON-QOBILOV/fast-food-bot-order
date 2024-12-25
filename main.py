@@ -503,7 +503,6 @@ async def go_back(message: types.Message, state: FSMContext):
 
 @dp.message_handler(lambda message: message.text)
 async def back_from_settings(message: types.Message, state: FSMContext):
-    # Get the user's language
     language = get_user(message.from_user.id)[3]
 
     if language == "O'zbek" and message.text == "🔙 Orqaga qaytish":
