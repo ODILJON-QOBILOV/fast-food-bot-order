@@ -1,0 +1,19 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: ru\n"
+
+msgid "Здравствуйте! Давайте для начала выберем язык обслуживания!\nKeling, avvaliga xizmat ko’rsatish tilini tanlab olaylik.\nHi! Let's first choose the language of service!"
+msgstr "Здравствуйте! Давайте для начала выберем язык обслуживания!"
+
+msgid "Welcome back! Choose an option from the menu below:"
+msgstr "Добро пожаловать обратно! Выберите вариант из меню ниже:"
+
+msgid "Please choose your language:"
+msgstr "Пожалуйста, выберите ваш язык:"
+
+msgid "Please select your city:"
+msgstr "Пожалуйста, выберите ваш город:"
+
+msgid "You are now fully registered! Choose an option from the menu below:"
+msgstr "Вы полностью зарегистрированы! Выберите вариант из меню ниже:"
