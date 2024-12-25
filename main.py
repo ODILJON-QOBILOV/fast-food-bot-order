@@ -513,6 +513,5 @@ async def back_from_settings(message: types.Message, state: FSMContext):
     elif language == "English" and message.text == "🔙 Back to menu":
         await message.reply("Returning to the main menu:", reply_markup=main_menu_kb_en)
 
-
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
