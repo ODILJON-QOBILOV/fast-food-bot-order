@@ -1,12 +1,13 @@
 from aiogram import Bot, executor
 from aiogram.contrib.middlewares.i18n import I18nMiddleware
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 from app.database import update_language, update_city, get_user, add_user, start_db, update_name, update_phone, \
-    get_user_language
+    get_user_language, save_feedback, create_feedback_table
 from app.buttons import language_kb, city_kb_rus, city_kb_uzb, city_kb_eng, main_menu_kb_en, main_menu_kb_ru, \
     main_menu_kb_uz, settings_kb_ru, settings_kb_uz, settings_kb_en, back_kb_uz, back_kb_ru, back_kb_en, \
-    get_feedback_keyboard_uzb, get_feedback_keyboard_ru, \
-    get_feedback_keyboard_en, back_to_main_uz, back_to_main_ru, back_to_main_en
+     back_to_main_uz, back_to_main_ru, back_to_main_en, get_additional_feedback_keyboard, \
+    get_feedback_keyboard
 from aiogram import Dispatcher
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram import types
@@ -15,7 +16,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 
 import os
 
-BOT_TOKEN = "your_token_here"
+BOT_TOKEN = "7718263976:AAFE04mgDSXu6ic1aaUiJvis-ahmOTeARgg"
 
 # Initialize bot and dispatcher
 storage = MemoryStorage()
@@ -76,11 +77,13 @@ async def start_command(message: types.Message):
             greeting_message = _("Welcome back! Choose an option from the menu below:")
 
             if language == "Русский":
-                greeting_message = _("Добро пожаловать! Выберите опцию из меню ниже:")
+                greeting_message = ("Добро пожаловать! Выберите опцию из меню ниже:")
+                await message.reply(greeting_message, reply_markup=main_menu_kb_ru)
             if language == "O'zbek":
-                greeting_message = _("Xush kelibsiz")
-
-            await message.reply(greeting_message, reply_markup=menu)
+                greeting_message = ("Xush kelibsiz")
+                await message.reply(greeting_message, reply_markup=main_menu_kb_uz)
+            else:
+                await message.reply("Welcome back, choose options from menu:", reply_markup=main_menu_kb_en)
         else:
             if not language:
                 await message.reply(_("Please choose your language:"), reply_markup=language_kb)
@@ -144,63 +147,110 @@ async def city_selection(message: types.Message):
 
 
 # fikrlar
-@dp.message_handler(lambda message: message.text in ["✍️ Fikr qoldirish", "✍️ Оставить отзыв", "✍️ Give a Feedback"])
+@dp.message_handler(lambda message: message.text in ["✍️ Fikr qoldirish", "✍️ Оставить отзыв", "✍️ Give Feedback"])
 async def prompt_feedback(message: types.Message):
-    # Get the user's language preference
-    language = get_user_language(message.from_user.id)
-
-    # Send the feedback prompt based on the user's language
-    if language == "O'zbek":
-        await message.reply("Iltimos, xizmatimizni baholang:", reply_markup=get_feedback_keyboard_uzb())
-    elif language == "Русский":
-        await message.reply("Пожалуйста, оцените нашу работу:", reply_markup=get_feedback_keyboard_ru())
-    else:
-        await message.reply("Please rate our service:", reply_markup=get_feedback_keyboard_en())
-
-@dp.message_handler(lambda message: message.text in
-                                    ["⭐️⭐️⭐️⭐️⭐️ Yaxshi", "⭐️⭐️⭐️⭐️ Nima noto'g'ri?", "⭐️⭐️⭐️ Juda noto'g'ri",
-                                     "⭐️⭐️ Yomon", "⭐️ Juda yomon",
-                                     "⭐️⭐️⭐️⭐️⭐️ Хорошо", "⭐️⭐️⭐️⭐️ Что-то не так", "⭐️⭐️⭐️ Очень плохо",
-                                     "⭐️⭐️ Плохо", "⭐️ Очень плохо",
-                                     "⭐️⭐️⭐️⭐️⭐️ Good", "⭐️⭐️⭐️⭐️ Something is wrong", "⭐️⭐️⭐️ Very wrong",
-                                     "⭐️⭐️ Bad", "⭐️ Very bad"])
-async def handle_rating(message: types.Message):
-    # Handle rating selection and process feedback
     user_id = message.from_user.id
-    rating = 0
-    feedback = ""
+    language = get_user_language(user_id)
 
-    # Determine rating based on the text
-    if message.text in ["⭐️⭐️⭐️⭐️⭐️ Yaxshi", "⭐️⭐️⭐️⭐️⭐️ Хорошо", "⭐️⭐️⭐️⭐️⭐️ Good"]:
+    # Send prompt based on language
+    if language == "O'zbek":
+        await message.reply("Iltimos, xizmatimizni baholang:", reply_markup=get_feedback_keyboard(language))
+    elif language == "Русский":
+        await message.reply("Пожалуйста, оцените нашу работу:", reply_markup=get_feedback_keyboard(language))
+    else:
+        await message.reply("Please rate our service:", reply_markup=get_feedback_keyboard(language))
+
+
+@dp.message_handler(lambda message: message.text.startswith("⭐️"))
+async def handle_rating(message: types.Message):
+    user_id = message.from_user.id
+    language = get_user_language(user_id)
+    rating = None
+
+    # Map ratings based on the button text
+    if "⭐️⭐️⭐️⭐️⭐️" in message.text:
         rating = 5
-        feedback = "Great service!"
-    elif message.text in ["⭐️⭐️⭐️⭐️ Nima noto'g'ri?", "⭐️⭐️⭐️⭐️ Что-то не так", "⭐️⭐️⭐️⭐️ Something is wrong"]:
+    elif "⭐️⭐️⭐️⭐️" in message.text:
         rating = 4
-        feedback = "Something was wrong."
-    elif message.text in ["⭐️⭐️⭐️ Juda noto'g'ri", "⭐️⭐️⭐️ Очень плохо", "⭐️⭐️⭐️ Very wrong"]:
+    elif "⭐️⭐️⭐️" in message.text:
         rating = 3
-        feedback = "Very wrong."
-    elif message.text in ["⭐️⭐️ Yomon", "⭐️⭐️ Плохо", "⭐️⭐️ Bad"]:
+    elif "⭐️⭐️" in message.text:
         rating = 2
-        feedback = "Bad service."
-    elif message.text in ["⭐️ Juda yomon", "⭐️ Очень плохо", "⭐️ Very bad"]:
+    elif "⭐️" in message.text:
         rating = 1
-        feedback = "Very bad."
 
-    # Acknowledge the rating
-    await message.reply(f"Thank you for your feedback! You rated us {rating} stars. {feedback}")
-
-    # If the rating is less than 5, ask for additional feedback
-    if rating < 5:
-        # Request additional feedback based on the language
-        language = get_user_language(user_id)
+    # Handle 5-star feedback
+    if rating == 5:
         if language == "O'zbek":
-            await message.reply("Nima yoqtirmadingiz? Xizmatimizni yaxshilash uchun fikrlaringizni qoldiring.")
+            await message.reply("Rahmat! Sizning fikringiz biz uchun juda muhim!", reply_markup=ReplyKeyboardMarkup(resize_keyboard=True).add(KeyboardButton("Ortga")))
+        elif language == "Русский":
+            await message.reply("Спасибо! Ваш отзыв очень важен для нас!", reply_markup=ReplyKeyboardMarkup(resize_keyboard=True).add(KeyboardButton("Назад")))
+        else:
+            await message.reply("Thank you! Your feedback is very important to us.", reply_markup=ReplyKeyboardMarkup(resize_keyboard=True).add(KeyboardButton("Back")))
+    else:
+        # Handle feedback less than 5 stars
+        if language == "O'zbek":
+            await message.reply(
+                "Nimadan norozi bo'lganingizni aytib bera olasizmi?",
+                reply_markup=ReplyKeyboardMarkup(resize_keyboard=True).add(KeyboardButton("Ortga"))
+            )
         elif language == "Русский":
             await message.reply(
-                "Что вам не понравилось? Пожалуйста, оставьте ваш отзыв, чтобы мы могли улучшить наш сервис.")
+                "Что вас разочаровало?",
+                reply_markup=ReplyKeyboardMarkup(resize_keyboard=True).add(KeyboardButton("Назад"))
+            )
         else:
-            await message.reply("What did you dislike? Please leave your feedback so we can improve our service.")
+            await message.reply(
+                "What was the disappointment?",
+                reply_markup=ReplyKeyboardMarkup(resize_keyboard=True).add(KeyboardButton("Back"))
+            )
+
+
+@dp.message_handler(lambda message: message.text not in ["Ortga", "Назад", "Back"])
+async def handle_feedback(message: types.Message):
+    user_id = message.from_user.id
+    feedback = message.text
+    create_feedback_table()
+
+    # Save feedback to the database
+    try:
+        await save_feedback(user_id, feedback)
+
+        language = get_user_language(user_id)
+        if language == "O'zbek":
+            await message.reply("Fikringiz saqlandi, rahmat!", reply_markup=ReplyKeyboardMarkup(resize_keyboard=True).add(KeyboardButton("Ortga")))
+        elif language == "Русский":
+            await message.reply("Ваш отзыв сохранен, спасибо!", reply_markup=ReplyKeyboardMarkup(resize_keyboard=True).add(KeyboardButton("Назад")))
+        else:
+            await message.reply("Your feedback has been saved, thank you!", reply_markup=ReplyKeyboardMarkup(resize_keyboard=True).add(KeyboardButton("Back")))
+
+        # Return to the main menu
+        if language == "O'zbek":
+            await message.reply("Qayta aloqa qilish uchun menu.", reply_markup=main_menu_kb_uz)
+        elif language == "Русский":
+            await message.reply("Вы вернулись в меню.", reply_markup=main_menu_kb_ru)
+        else:
+            await message.reply("You are back in the menu.", reply_markup=main_menu_kb_en)
+
+    except Exception as e:
+        await message.reply("Sorry, there was an issue saving your feedback. Please try again later.")
+
+
+@dp.message_handler(lambda message: message.text in ["Ortga", "Назад", "Back"])
+async def handle_back_button(message: types.Message):
+    # Show the main menu
+    language = get_user_language(message.from_user.id)
+
+    if language == "O'zbek":
+        await message.reply("Asosiy menyu:", reply_markup=main_menu_kb_uz)
+    elif language == "Русский":
+        await message.reply("Главное меню:", reply_markup=main_menu_kb_ru)
+    else:
+        await message.reply("Main menu:", reply_markup=main_menu_kb_en)
+
+
+
+# Example Main Menu Keyboard
 
 
 # info

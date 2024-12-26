@@ -95,13 +95,40 @@ def get_user_language(user_id):
     return language[0] if language else "English"
 
 
-def save_feedback(user_id, username, rating, comment=None, language="English"):
+def create_feedback_table():
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO feedback (userid, username, rating, comment, language) VALUES (?, ?, ?, ?, ?)",
-        (user_id, username, rating, comment, language)
-    )
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS feedback (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        userid INTEGER NOT NULL,
+        username TEXT NOT NULL,
+        rating INTEGER NOT NULL,
+        comment TEXT,
+        language TEXT NOT NULL
+    );
+    """)
     conn.commit()
     cursor.close()
     conn.close()
+
+def save_feedback(user_id, username, rating, comment=None, language="English"):
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            print("Failed to connect to the database.")
+            return
+
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO feedback (userid, username, rating, comment, language) VALUES (?, ?, ?, ?, ?)",
+            (user_id, username, rating, comment if comment else '', language)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except sqlite3.Error as e:
+        print(f"Error saving feedback: {e}")
+        print("Feedback was not saved.")
+        return False
+    return True
