@@ -16,7 +16,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 
 import os
 
-BOT_TOKEN = "7718263976:AAFE04mgDSXu6ic1aaUiJvis-ahmOTeARgg"
+BOT_TOKEN = "your api token"
 
 # Initialize bot and dispatcher
 storage = MemoryStorage()
